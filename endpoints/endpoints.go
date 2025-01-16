@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -33,6 +34,96 @@ func PrintJsonHandler(writer http.ResponseWriter, requester *http.Request) {
 	writer.Write([]byte("Received successfully"))
 }
 
+// Main JSON object
+type GameData struct {
+	Info     Info     `json:"info"`
+	Metadata Metadata `json:"metadata"`
+}
+
+// Metadata object
+type Metadata struct {
+	MatchID      string   `json:"matchId"`
+	Participants []string `json:"participants"`
+}
+
+// Info object
+type Info struct {
+	GameCreation       int64         `json:"gameCreation"`
+	GameDuration       int           `json:"gameDuration"`
+	GameEndTimestamp   int64         `json:"gameEndTimestamp"`
+	GameStartTimestamp int64         `json:"gameStartTimestamp"`
+	GameVersion        string        `json:"gameVersion"`
+	GameID             int64         `json:"gameId"`
+	QueueID            int64         `json:"queueId"`
+	Participants       []Participant `json:"participants"`
+}
+
+// Participant object
+type Participant struct {
+	Assists                       int    `json:"assists"`
+	ChampExperience               int    `json:"champExperience"`
+	ChampLevel                    int    `json:"champLevel"`
+	ChampionID                    int    `json:"championId"`
+	ChampionName                  string `json:"championName"`
+	Deaths                        int    `json:"deaths"`
+	GoldEarned                    int    `json:"goldEarned"`
+	Item0                         string `json:"item0"`
+	Item1                         string `json:"item1"`
+	Item2                         string `json:"item2"`
+	Item3                         string `json:"item3"`
+	Item4                         string `json:"item4"`
+	Item5                         string `json:"item5"`
+	Item6                         string `json:"item6"`
+	Kills                         int    `json:"kills"`
+	NeutralMinionsKilled          int    `json:"neutralMinionsKilled"`
+	Perks                         Perks  `json:"perks"`
+	RiotIDGameName                string `json:"riotIdGameName"`
+	RiotIDTagline                 string `json:"riotIdTagline"`
+	Summoner1ID                   string `json:"summoner1Id"`
+	Summoner2ID                   string `json:"summoner2Id"`
+	SummonerName                  string `json:"summonerName"`
+	TeamID                        int    `json:"teamId"`
+	TotalAllyJungleMinionsKilled  int    `json:"totalAllyJungleMinionsKilled"`
+	TotalDamageDealtToChampions   int    `json:"totalDamageDealtToChampions"`
+	TotalEnemyJungleMinionsKilled int    `json:"totalEnemyJungleMinionsKilled"`
+	TotalMinionsKilled            int    `json:"totalMinionsKilled"`
+	VisionScore                   int    `json:"visionScore"`
+	Win                           bool   `json:"win"`
+}
+
+// Perks object
+type Perks struct {
+	Styles []Style `json:"styles"`
+}
+
+// Style object
+type Style struct {
+	Selections []Selection `json:"selections,omitempty"`
+	Style      string      `json:"style,omitempty"`
+}
+
+// Selection object
+type Selection struct {
+	Perk string `json:"perk"`
+}
+
+func GetGameTime(durationInSeconds int) string {
+	// Convert seconds to minutes and calculate remaining seconds
+	minutes := durationInSeconds / 60
+	seconds := durationInSeconds % 60
+
+	// Format the output as "mm:ss"
+	formattedTime := fmt.Sprintf("%02d:%02d", minutes, seconds)
+	return formattedTime
+}
+
+func UnixToDateString(epoch int64) string {
+	// Convert the epoch time to a time.Time object
+	t := time.Unix(epoch/1000, 0)
+	// Format the time object as "year-month-day"
+	return t.Format("2006-01-02")
+}
+
 func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbpool *pgxpool.Pool) {
 	if requester.Method != http.MethodPost {
 		http.Error(writer, "Only POST method is allowed", http.StatusMethodNotAllowed)
@@ -48,73 +139,44 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 	defer requester.Body.Close()
 
 	// Print the body to the console
-	fmt.Printf("Received JSON body: %s\n", string(body))
+	fmt.Printf("Received JSON body: %s\n", body)
 
-	// Parse the JSON string into a map
-	var data map[string]interface{}
-	if err := json.Unmarshal(body, &data); err != nil {
+	var gameData GameData
+	err = json.Unmarshal([]byte(body), &gameData)
+	if err != nil {
 		fmt.Println("Error parsing JSON:", err)
-		http.Error(writer, "Failed to parse JSON", http.StatusBadRequest)
 		return
 	}
 
-	// Extract values from the parsed data map
-	info, ok := data["info"].(map[string]interface{})
-	if !ok {
-		http.Error(writer, "Missing 'info' field", http.StatusBadRequest)
-		return
+	riotID := fmt.Sprintf("%s:%s", gameData.Info.Participants[0].RiotIDGameName, gameData.Info.Participants[0].RiotIDTagline)
+
+	var queueType string
+	if gameData.Info.QueueID == 420 {
+		queueType = "Ranked Solo/Duo"
 	}
 
-	// TODO: Create a full structure body for what is in the payloads
-	// The following is an EXAMPLE and not to be used for realsies
-	// Example:
-	/*
-			// Participant struct for each player in the participants array
-		type Participant struct {
-		    PlayerID int    `json:"playerID"`
-		    Name     string `json:"name"`
-		    Kills    int    `json:"kills"`
-		    Deaths   int    `json:"deaths"`
-		}
-
-		// Info struct for the main game info
-		type Info struct {
-		    GameID        int            `json:"gameID"`
-		    GameVersion   string         `json:"gameVersion"`
-		    GameDuration  int            `json:"gameDuration"`
-		    Participants  []Participant  `json:"participants"`
-		}
-
-		// Metadata struct for the metadata section
-		type Metadata struct {
-		    MatchID   string `json:"matchId"`
-		    Timestamp int    `json:"timestamp"`
-		}
-
-		// GameData struct for the full JSON structure
-		type GameData struct {
-		    Info     Info     `json:"info"`
-		    Metadata Metadata `json:"metadata"`
-		}
-	*/
-	// Temporary dog water variables
-	gameID := info["gameId"].(string)
-	gameVer := info["gameVersion"].(string)
-	riotID := fmt.Sprintf("%s:%s", info["riotIdGameName"].(string), info["riotIdTagline"].(string))
-	gameDurationMinutes := fmt.Sprintf("%.0f", info["gameDuration"].(float64))
-	gameCreationTimestamp := info["gameCreation"].(string)
-	gameEndTimestamp := info["gameEndTimestamp"].(string)
-	queueType := "bob"
-	gameDate := "bob"
-	participants := info["gameEndTimestamp"].(string)
-	matchData := "bob"
+	//matchData := []map[string]string
+	for index, value := range gameData.Info.Participants {
+		fmt.Println("index", index)
+		fmt.Println("value", value)
+		//matchData = append(matchData, map[string]string{})
+	}
 
 	// Example of database interaction (read-only query for simplicity)
 	var value string
 	err = dbpool.QueryRow(context.Background(),
 		`INSERT INTO "matchHistory" ("gameID", "gameVer", "riotID", "gameDurationMinutes", "gameCreationTimestamp", "gameEndTimestamp", "queueType", "gameDate", "participants", "matchData")
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-		gameID, gameVer, riotID, gameDurationMinutes, gameCreationTimestamp, gameEndTimestamp, queueType, gameDate, participants, matchData,
+		gameData.Info.GameID,
+		gameData.Info.GameVersion,
+		riotID,
+		GetGameTime(gameData.Info.GameDuration),
+		gameData.Info.GameCreation,
+		gameData.Info.GameEndTimestamp,
+		queueType,
+		UnixToDateString(gameData.Info.GameCreation),
+		gameData.Metadata.Participants,
+		//matchData,
 	).Scan(&value)
 
 	if err != nil {
