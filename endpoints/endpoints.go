@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -139,10 +140,26 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 	defer requester.Body.Close()
 
 	// Print the body to the console
-	fmt.Printf("Received JSON body: %s\n", body)
+	// fmt.Printf("Received JSON body: %s\n", body)
 
+	//var gameData GameData
+	var rawJSON string
+	err = json.Unmarshal([]byte(body), &rawJSON)
+	if err != nil {
+		fmt.Println("Error parsing JSON:", err)
+		return
+	}
+
+	var formattedJSON bytes.Buffer
+	err = json.Indent(&formattedJSON, []byte(rawJSON), "", "  ")
+	if err != nil {
+		fmt.Println("Error formatting JSON:", err)
+		return
+	}
+
+	//var gameData GameData
 	var gameData GameData
-	err = json.Unmarshal([]byte(body), &gameData)
+	err = json.Unmarshal(formattedJSON.Bytes(), &gameData)
 	if err != nil {
 		fmt.Println("Error parsing JSON:", err)
 		return
@@ -155,18 +172,25 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 		queueType = "Ranked Solo/Duo"
 	}
 
-	//matchData := []map[string]string
+	// jsonData, err := json.Marshal(gameData.Info.Participants)
+	// if err != nil {
+	// 	fmt.Println("Error marshalling struct:", err)
+	// 	return
+	// }
+	// fmt.Println(string(jsonData))
+
+	matchData := []map[string]string{}
 	for index, value := range gameData.Info.Participants {
-		fmt.Println("index", index)
-		fmt.Println("value", value)
-		//matchData = append(matchData, map[string]string{})
+		matchData = append(matchData, map[string]string{
+			fmt.Sprintf("%d", index): fmt.Sprintf("%v", value),
+		})
 	}
 
 	// Example of database interaction (read-only query for simplicity)
 	var value string
 	err = dbpool.QueryRow(context.Background(),
 		`INSERT INTO "matchHistory" ("gameID", "gameVer", "riotID", "gameDurationMinutes", "gameCreationTimestamp", "gameEndTimestamp", "queueType", "gameDate", "participants", "matchData")
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 		gameData.Info.GameID,
 		gameData.Info.GameVersion,
 		riotID,
@@ -176,8 +200,29 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 		queueType,
 		UnixToDateString(gameData.Info.GameCreation),
 		gameData.Metadata.Participants,
-		//matchData,
+		matchData,
 	).Scan(&value)
+
+	fmt.Println(gameData.Info.GameID)
+	fmt.Println(gameData.Info.GameVersion)
+	fmt.Println(riotID)
+	fmt.Println(GetGameTime(gameData.Info.GameDuration))
+	fmt.Println(gameData.Info.GameCreation)
+	fmt.Println(gameData.Info.GameEndTimestamp)
+	fmt.Println(queueType)
+	fmt.Println(UnixToDateString(gameData.Info.GameCreation))
+
+	for index, value := range gameData.Metadata.Participants {
+		fmt.Println(index, value)
+	}
+
+	jsonData, err := json.Marshal(gameData.Info.Participants)
+	if err != nil {
+		fmt.Println("Error marshalling struct:", err)
+		return
+	}
+	fmt.Println(string(jsonData))
+	//fmt.Println(matchData)
 
 	if err != nil {
 		http.Error(writer, "Database error", http.StatusInternalServerError)
