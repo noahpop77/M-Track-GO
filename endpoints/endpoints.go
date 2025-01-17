@@ -184,35 +184,33 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 		return
 	}
 
-	// Example of database interaction (read-only query for simplicity)
-	var value string
-	err = dbpool.QueryRow(context.Background(),
-		`INSERT INTO "matchHistory" ("gameID", "gameVer", "riotID", "gameDurationMinutes", "gameCreationTimestamp", "gameEndTimestamp", "queueType", "gameDate", "participants", "matchData")
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-		gameData.Info.GameID,
+	_, err = dbpool.Exec(context.Background(),
+		`INSERT INTO "matchHistory" ("gameID", "gameVer", "riotID", "gameDurationMinutes", "gameCreationTimestamp", "gameEndTimestamp", "queueType", "gameDate", "participants", "matchData") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		gameData.Metadata.MatchID,
 		gameData.Info.GameVersion,
 		riotID,
 		GetGameTime(gameData.Info.GameDuration),
-		gameData.Info.GameCreation,
-		gameData.Info.GameEndTimestamp,
+		fmt.Sprintf("%d", gameData.Info.GameCreation),
+		fmt.Sprintf("%d", gameData.Info.GameEndTimestamp),
 		queueType,
 		UnixToDateString(gameData.Info.GameCreation),
 		string(participantData),
 		string(matchData),
-	).Scan(&value)
+	)
 
-	fmt.Println(gameData.Info.GameID)
-	fmt.Println(gameData.Info.GameVersion)
-	fmt.Println(riotID)
-	fmt.Println(GetGameTime(gameData.Info.GameDuration))
-	fmt.Println(gameData.Info.GameCreation)
-	fmt.Println(gameData.Info.GameEndTimestamp)
-	fmt.Println(queueType)
-	fmt.Println(UnixToDateString(gameData.Info.GameCreation))
-	fmt.Println(string(participantData))
-	fmt.Println(string(matchData))
+	// fmt.Println(gameData.Info.GameID)
+	// fmt.Println(gameData.Info.GameVersion)
+	// fmt.Println(riotID)
+	// fmt.Println(GetGameTime(gameData.Info.GameDuration))
+	// fmt.Println(gameData.Info.GameCreation)
+	// fmt.Println(gameData.Info.GameEndTimestamp)
+	// fmt.Println(queueType)
+	// fmt.Println(UnixToDateString(gameData.Info.GameCreation))
+	// fmt.Println(string(participantData))
+	// fmt.Println(string(matchData))
 
 	if err != nil {
+		fmt.Println(err)
 		http.Error(writer, "Database error", http.StatusInternalServerError)
 		return
 	}
