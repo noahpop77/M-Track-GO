@@ -172,18 +172,16 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 		queueType = "Ranked Solo/Duo"
 	}
 
-	// jsonData, err := json.Marshal(gameData.Info.Participants)
-	// if err != nil {
-	// 	fmt.Println("Error marshalling struct:", err)
-	// 	return
-	// }
-	// fmt.Println(string(jsonData))
+	matchData, err := json.Marshal(gameData.Info.Participants)
+	if err != nil {
+		fmt.Println("Error marshalling struct:", err)
+		return
+	}
 
-	matchData := []map[string]string{}
-	for index, value := range gameData.Info.Participants {
-		matchData = append(matchData, map[string]string{
-			fmt.Sprintf("%d", index): fmt.Sprintf("%v", value),
-		})
+	participantData, err := json.Marshal(gameData.Metadata.Participants)
+	if err != nil {
+		fmt.Println("Error marshalling struct:", err)
+		return
 	}
 
 	// Example of database interaction (read-only query for simplicity)
@@ -199,8 +197,8 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 		gameData.Info.GameEndTimestamp,
 		queueType,
 		UnixToDateString(gameData.Info.GameCreation),
-		gameData.Metadata.Participants,
-		matchData,
+		string(participantData),
+		string(matchData),
 	).Scan(&value)
 
 	fmt.Println(gameData.Info.GameID)
@@ -211,18 +209,8 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 	fmt.Println(gameData.Info.GameEndTimestamp)
 	fmt.Println(queueType)
 	fmt.Println(UnixToDateString(gameData.Info.GameCreation))
-
-	for index, value := range gameData.Metadata.Participants {
-		fmt.Println(index, value)
-	}
-
-	jsonData, err := json.Marshal(gameData.Info.Participants)
-	if err != nil {
-		fmt.Println("Error marshalling struct:", err)
-		return
-	}
-	fmt.Println(string(jsonData))
-	//fmt.Println(matchData)
+	fmt.Println(string(participantData))
+	fmt.Println(string(matchData))
 
 	if err != nil {
 		http.Error(writer, "Database error", http.StatusInternalServerError)
