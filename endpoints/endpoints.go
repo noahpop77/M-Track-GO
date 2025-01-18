@@ -131,7 +131,8 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 		return
 	}
 
-	fmt.Println(requester.Body)
+	var body []byte
+	var err error
 	if requester.Header.Get("Content-Encoding") == "gzip" {
 		// Decompress the gzip payload
 		gr, err := gzip.NewReader(requester.Body)
@@ -143,30 +144,27 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 		defer gr.Close()
 
 		// Read the decompressed data
-		body, err := io.ReadAll(gr)
+		body, err = io.ReadAll(gr)
 		if err != nil {
 			fmt.Println(writer, "Failed to read decompressed data", http.StatusInternalServerError)
 			http.Error(writer, "Failed to read decompressed data", http.StatusInternalServerError)
 			return
 		}
-
-		// Process the decompressed body
-		fmt.Printf("Decompressed body: %s\n", body)
+	} else {
+		// Read the body of the request
+		body, err = io.ReadAll(requester.Body)
+		if err != nil {
+			http.Error(writer, "Failed to read request body", http.StatusInternalServerError)
+			return
+		}
+		defer requester.Body.Close()
 	}
 
-	// Read the body of the request
-	body, err := io.ReadAll(requester.Body)
+	// fmt.Println(string(body))
+	var rawJSON json.RawMessage
+	err = json.Unmarshal(body, &rawJSON)
 	if err != nil {
-		http.Error(writer, "Failed to read request body", http.StatusInternalServerError)
-		return
-	}
-	defer requester.Body.Close()
-
-	fmt.Println(body)
-	var rawJSON string
-	err = json.Unmarshal([]byte(body), &rawJSON)
-	if err != nil {
-		fmt.Println("Error parsing JSON:", err)
+		fmt.Println("Raw Error parsing JSON:", err)
 		return
 	}
 
@@ -174,7 +172,7 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 	var gameData GameData
 	err = json.Unmarshal([]byte(rawJSON), &gameData)
 	if err != nil {
-		fmt.Println("Error parsing JSON:", err)
+		fmt.Println("Game Error parsing JSON:", err)
 		return
 	}
 
