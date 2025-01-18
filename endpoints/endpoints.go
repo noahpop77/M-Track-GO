@@ -1,7 +1,7 @@
 package endpoints
 
 import (
-	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -131,6 +131,29 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 		return
 	}
 
+	fmt.Println(requester.Body)
+	if requester.Header.Get("Content-Encoding") == "gzip" {
+		// Decompress the gzip payload
+		gr, err := gzip.NewReader(requester.Body)
+		if err != nil {
+			fmt.Println(writer, "Failed to create gzip reader", http.StatusInternalServerError)
+			http.Error(writer, "Failed to create gzip reader", http.StatusInternalServerError)
+			return
+		}
+		defer gr.Close()
+
+		// Read the decompressed data
+		body, err := io.ReadAll(gr)
+		if err != nil {
+			fmt.Println(writer, "Failed to read decompressed data", http.StatusInternalServerError)
+			http.Error(writer, "Failed to read decompressed data", http.StatusInternalServerError)
+			return
+		}
+
+		// Process the decompressed body
+		fmt.Printf("Decompressed body: %s\n", body)
+	}
+
 	// Read the body of the request
 	body, err := io.ReadAll(requester.Body)
 	if err != nil {
@@ -139,10 +162,7 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 	}
 	defer requester.Body.Close()
 
-	// Print the body to the console
-	// fmt.Printf("Received JSON body: %s\n", body)
-
-	//var gameData GameData
+	fmt.Println(body)
 	var rawJSON string
 	err = json.Unmarshal([]byte(body), &rawJSON)
 	if err != nil {
@@ -150,16 +170,9 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 		return
 	}
 
-	var formattedJSON bytes.Buffer
-	err = json.Indent(&formattedJSON, []byte(rawJSON), "", "  ")
-	if err != nil {
-		fmt.Println("Error formatting JSON:", err)
-		return
-	}
-
 	//var gameData GameData
 	var gameData GameData
-	err = json.Unmarshal(formattedJSON.Bytes(), &gameData)
+	err = json.Unmarshal([]byte(rawJSON), &gameData)
 	if err != nil {
 		fmt.Println("Error parsing JSON:", err)
 		return
@@ -171,6 +184,10 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 	if gameData.Info.QueueID == 420 {
 		queueType = "Ranked Solo/Duo"
 	}
+
+	// fmt.Println("rawJSON", reflect.TypeOf(rawJSON))
+	// fmt.Println("rawJSON", rawJSON)
+	// fmt.Println("gameData", reflect.TypeOf(gameData))
 
 	matchData, err := json.Marshal(gameData.Info.Participants)
 	if err != nil {
