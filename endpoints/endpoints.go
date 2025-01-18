@@ -183,10 +183,6 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 		queueType = "Ranked Solo/Duo"
 	}
 
-	// fmt.Println("rawJSON", reflect.TypeOf(rawJSON))
-	// fmt.Println("rawJSON", rawJSON)
-	// fmt.Println("gameData", reflect.TypeOf(gameData))
-
 	matchData, err := json.Marshal(gameData.Info.Participants)
 	if err != nil {
 		fmt.Println("Error marshalling struct:", err)
