@@ -2,11 +2,11 @@ package endpoints
 
 import (
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	_ "net/http/pprof" // Import pprof package
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -160,7 +160,8 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 		defer requester.Body.Close()
 	}
 
-	// fmt.Println(string(body))
+	//fmt.Println(string(body))
+
 	var rawJSON json.RawMessage
 	err = json.Unmarshal(body, &rawJSON)
 	if err != nil {
@@ -168,46 +169,46 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 		return
 	}
 
-	//var gameData GameData
-	var gameData GameData
-	err = json.Unmarshal([]byte(rawJSON), &gameData)
-	if err != nil {
-		fmt.Println("Game Error parsing JSON:", err)
-		return
-	}
+	// //var gameData GameData
+	// var gameData GameData
+	// err = json.Unmarshal([]byte(rawJSON), &gameData)
+	// if err != nil {
+	// 	fmt.Println("Game Error parsing JSON:", err)
+	// 	return
+	// }
 
-	riotID := fmt.Sprintf("%s:%s", gameData.Info.Participants[0].RiotIDGameName, gameData.Info.Participants[0].RiotIDTagline)
+	// riotID := fmt.Sprintf("%s:%s", gameData.Info.Participants[0].RiotIDGameName, gameData.Info.Participants[0].RiotIDTagline)
 
-	var queueType string
-	if gameData.Info.QueueID == 420 {
-		queueType = "Ranked Solo/Duo"
-	}
+	// var queueType string
+	// if gameData.Info.QueueID == 420 {
+	// 	queueType = "Ranked Solo/Duo"
+	// }
 
-	matchData, err := json.Marshal(gameData.Info.Participants)
-	if err != nil {
-		fmt.Println("Error marshalling struct:", err)
-		return
-	}
+	// matchData, err := json.Marshal(gameData.Info.Participants)
+	// if err != nil {
+	// 	fmt.Println("Error marshalling struct:", err)
+	// 	return
+	// }
 
-	participantData, err := json.Marshal(gameData.Metadata.Participants)
-	if err != nil {
-		fmt.Println("Error marshalling struct:", err)
-		return
-	}
+	// participantData, err := json.Marshal(gameData.Metadata.Participants)
+	// if err != nil {
+	// 	fmt.Println("Error marshalling struct:", err)
+	// 	return
+	// }
 
-	_, err = dbpool.Exec(context.Background(),
-		`INSERT INTO "matchHistory" ("gameID", "gameVer", "riotID", "gameDurationMinutes", "gameCreationTimestamp", "gameEndTimestamp", "queueType", "gameDate", "participants", "matchData") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-		gameData.Metadata.MatchID,
-		gameData.Info.GameVersion,
-		riotID,
-		GetGameTime(gameData.Info.GameDuration),
-		fmt.Sprintf("%d", gameData.Info.GameCreation),
-		fmt.Sprintf("%d", gameData.Info.GameEndTimestamp),
-		queueType,
-		UnixToDateString(gameData.Info.GameCreation),
-		string(participantData),
-		string(matchData),
-	)
+	// _, err = dbpool.Exec(context.Background(),
+	// 	`INSERT INTO "matchHistory" ("gameID", "gameVer", "riotID", "gameDurationMinutes", "gameCreationTimestamp", "gameEndTimestamp", "queueType", "gameDate", "participants", "matchData") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT ("gameID", "riotID") DO NOTHING;`,
+	// 	gameData.Metadata.MatchID,
+	// 	gameData.Info.GameVersion,
+	// 	riotID,
+	// 	GetGameTime(gameData.Info.GameDuration),
+	// 	fmt.Sprintf("%d", gameData.Info.GameCreation),
+	// 	fmt.Sprintf("%d", gameData.Info.GameEndTimestamp),
+	// 	queueType,
+	// 	UnixToDateString(gameData.Info.GameCreation),
+	// 	string(participantData),
+	// 	string(matchData),
+	// )
 
 	// fmt.Println(gameData.Info.GameID)
 	// fmt.Println(gameData.Info.GameVersion)
