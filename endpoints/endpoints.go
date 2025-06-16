@@ -21,15 +21,15 @@ func PrintJsonHandler(writer http.ResponseWriter, requester *http.Request) {
 	}
 
 	// Read the body of the request
-	body, err := io.ReadAll(requester.Body)
-	if err != nil {
-		http.Error(writer, "Failed to read request body", http.StatusInternalServerError)
-		return
-	}
-	defer requester.Body.Close()
+	// body, err := io.ReadAll(requester.Body)
+	// if err != nil {
+	// 	http.Error(writer, "Failed to read request body", http.StatusInternalServerError)
+	// 	return
+	// }
+	// defer requester.Body.Close()
 
 	// Print the body to the console
-	fmt.Printf("Received JSON body: %s\n", string(body))
+	// fmt.Printf("Received JSON body: %s\n", string(body))
 
 	// Respond with a 200 OK
 	writer.WriteHeader(http.StatusOK)
@@ -173,8 +173,6 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 
 	riotID := fmt.Sprintf("%s#%s", gameData.Info.Participants[0].RiotIDGameName, gameData.Info.Participants[0].RiotIDTagline)
 
-	
-
 	matchData, err := json.Marshal(gameData.Info.Participants)
 	if err != nil {
 		fmt.Println("Error marshalling struct:", err)
@@ -186,8 +184,6 @@ func InsertIntoDatabase(writer http.ResponseWriter, requester *http.Request, dbp
 		fmt.Println("Error marshalling struct:", err)
 		return
 	}
-
-	
 
 	_, err = dbpool.Exec(context.Background(),
 		`INSERT INTO "matchHistory" ("gameID", "gameVer", "riotID", "gameDurationMinutes", "gameCreationTimestamp", "gameEndTimestamp", "queueType", "gameDate", "participants", "matchData") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT ("gameID", "riotID") DO NOTHING;`,

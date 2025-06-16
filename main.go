@@ -1,39 +1,37 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"m-track-go/endpoints"
 	"net/http"
-
-	"github.com/jackc/pgx/v4/pgxpool"
+	// "github.com/jackc/pgx/v4/pgxpool"
 )
 
-var dbpool *pgxpool.Pool
+// var dbpool *pgxpool.Pool
 
-// Initialize the database connection pool
-func initDB() {
-	var err error
-	dbpool, err = pgxpool.Connect(context.Background(), "postgres://sawa:sawa@localhost:5432/mtrack")
-	if err != nil {
-		log.Fatalf("Unable to connect to database: %v\n", err)
-	}
-	fmt.Println("Connected to the database successfully.")
-}
+// // Initialize the database connection pool
+// func initDB() {
+// 	var err error
+// 	dbpool, err = pgxpool.Connect(context.Background(), "postgres://sawa:sawa@localhost:5432/mtrack")
+// 	if err != nil {
+// 		log.Fatalf("Unable to connect to database: %v\n", err)
+// 	}
+// 	fmt.Println("Connected to the database successfully.")
+// }
 
 func main() {
 	// Initialize the database connection
-	initDB()
+	// initDB()
 
 	// Set up your handlers
 	http.HandleFunc("/printJson", func(writer http.ResponseWriter, requester *http.Request) {
 		endpoints.PrintJsonHandler(writer, requester)
 	})
 
-	http.HandleFunc("/addMatch", func(writer http.ResponseWriter, requester *http.Request) {
-		endpoints.InsertIntoDatabase(writer, requester, dbpool)
-	})
+	// http.HandleFunc("/addMatch", func(writer http.ResponseWriter, requester *http.Request) {
+	// 	endpoints.InsertIntoDatabase(writer, requester, dbpool)
+	// })
 
 	fmt.Println(`
   ▗▖  ▗▖▗▄▄▄▖▗▄▄▖  ▗▄▖  ▗▄▄▖▗▖ ▗▖
